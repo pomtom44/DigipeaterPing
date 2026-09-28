@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DigipeaterPing</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  p.sub { color: #888; margin-top: 0; }
+  .search-row { display: flex; gap: 8px; margin: 16px 0; }
+  .search-row input { flex: 1; padding: 8px 10px; font-size: 16px; text-transform: uppercase; }
+  .search-row button { padding: 8px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8883; }
+  .yes { color: #2a7d2a; }
+  .no { color: #a33; }
+  .empty { color: #888; padding: 16px 0; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <h1>DigipeaterPing</h1>
+  <p class="sub" id="listener-label">Public ping listener for testing RF-to-IGate reach.</p>
+
+  <div class="search-row">
+    <input type="text" id="callsign-filter" placeholder="Filter by requesting callsign, e.g. ZL1ABC-9">
+    <button type="button" id="btn-refresh">Refresh</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>From</th><th>Token</th><th>Heard at</th><th>Replied</th></tr>
+    </thead>
+    <tbody id="pings-body"></tbody>
+  </table>
+  <p class="empty hidden" id="empty-msg">No pings recorded yet.</p>
+
+<script>
+  const filterInput = document.getElementById('callsign-filter');
+  const body = document.getElementById('pings-body');
+  const emptyMsg = document.getElementById('empty-msg');
+
+  async function load() {
+    const callsign = filterInput.value.trim();
+    const url = '/api/pings' + (callsign ? `?callsign=${encodeURIComponent(callsign)}` : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    document.getElementById('listener-label').textContent =
+      `Public ping listener for testing RF-to-IGate reach. Listening as ${data.callsign}.`;
+    body.innerHTML = '';
+    for (const p of data.pings) {
+      const tr = document.createElement('tr');
+      const heardAt = new Date(p.received_at * 1000).toLocaleString();
+      tr.innerHTML = `
+        <td>${p.from_call}</td>
+        <td>${p.token}</td>
+        <td>${heardAt}</td>
+        <td class="${p.replied ? 'yes' : 'no'}">${p.replied ? 'Yes' : 'No'}</td>
+      `;
+      body.appendChild(tr);
+    }
+    emptyMsg.classList.toggle('hidden', data.pings.length > 0);
+  }
+
+  document.getElementById('btn-refresh').addEventListener('click', load);
+  filterInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+  load();
+  setInterval(load, 15000);
+</script>
+</body>
+</html>
